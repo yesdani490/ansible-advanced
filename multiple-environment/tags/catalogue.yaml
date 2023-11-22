@@ -100,7 +100,7 @@
   - name: load catalogue data
     tags:
     - insallation
-    ansible.builtin.shell: mongo --host mongodb.joindevops.top < /app/schema/catalogue.js
+    ansible.builtin.shell: mongo --host 172.31.16.30 < /app/schema/catalogue.js
 
   - name: restart catalogue
     tags:
