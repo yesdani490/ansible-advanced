@@ -1,2 +1,5 @@
 [mongodb]
 172.31.30.83
+
+[mongodb:vars]
+NAME=PRO-SERVER
