@@ -1,0 +1,115 @@
+- name: Install catalogue component
+  hosts: catalogue
+  become: yes
+  tasks:
+  - name: setup NPM source
+    tags:
+    - insallation
+    ansible.builtin.shell: "curl -sL https://rpm.nodesource.com/setup_lts.x | bash"
+
+  - name: Install NodeJS
+    tags:
+    - insallation
+    ansible.builtin.yum:
+      name: nodejs
+      state: installed
+
+  - name: check roboshop user exist or not
+    tags:
+    - insallation
+    ansible.builtin.command: id roboshop
+    register: out #output is variable name
+    ignore_errors: true
+
+  - when: out.rc != 0
+    name: create user roboshop
+    become: yes # we need sudo access for this task only
+    ansible.builtin.user:
+      name: roboshop
+
+  - name: check /app directory exists or not
+    tags:
+    - insallation
+    ansible.builtin.stat:
+      path: /app
+    register: directory
+
+  - name: print the directory stats
+    tags:
+    - insallation
+    ansible.builtin.debug:
+      msg: "output: {{directory}}"
+
+  - when: directory.stat.exists == False
+    name: create /app directory
+    tags:
+    - insallation
+    ansible.builtin.file:
+      path: /app
+      state: directory
+
+  - name: download catalogue artifact
+    tags:
+    - deployment
+    ansible.builtin.get_url:
+      url: https://roboshop-builds.s3.amazonaws.com/catalogue.zip
+      dest: /tmp
+
+  - name: extract catalogue artifact
+    tags:
+    - deployment
+    ansible.builtin.unarchive:
+      src: /tmp/catalogue.zip
+      dest: /app
+      remote_src: yes
+
+  - name: install dependencies
+    tags:
+    - deployment
+    ansible.builtin.command: npm install
+    args:
+      chdir: /app
+
+  - name: copy catalogue service
+    tags:
+    - insallation
+    ansible.builtin.copy:
+      src: catalogue.service
+      dest: /etc/systemd/system/catalogue.service
+
+  - name: deamon reload
+    tags:
+    - insallation
+    ansible.builtin.systemd:
+      daemon_reload: true
+
+  - name: copy mongo repo to yum.repos.d
+    tags:
+    - insallation
+    ansible.builtin.copy:
+      src: mongodb.repo
+      dest: /etc/yum.repos.d/mongo.repo
+
+  - name: Install MongoDB
+    tags:
+    - insallation
+    ansible.builtin.yum:
+      name: mongodb-org-shell
+      state: installed
+
+  - name: load catalogue data
+    tags:
+    - insallation
+    ansible.builtin.shell: mongo --host mongodb.joindevops.top < /app/schema/catalogue.js
+
+  - name: restart catalogue
+    tags:
+    - deployment
+    ansible.builtin.service:
+      name: catalogue
+      state: restarted
+      enabled: true
+
+  
+
+  
